@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8" />
+		<title>Trees and Longevity</title>
+		<meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
+		<script src="https://api.mapbox.com/mapbox-gl-js/v1.12.0/mapbox-gl.js"></script>
+		<link href="https://api.mapbox.com/mapbox-gl-js/v1.12.0/mapbox-gl.css" rel="stylesheet" />
+		<style>
+			body { margin: 0; padding: 0; }
+		</style>
+	</head>
+	<body>
+		<style>
+			body {
+			overflow: hidden;
+			background-color: #D3D3D3;
+				font-family: Tahoma, sans-serif;
+			}
+			body * {
+			-webkit-touch-callout: none;
+			-webkit-user-select: none;
+			-moz-user-select: none;
+			-ms-user-select: none;
+			user-select: none;
+			}
+			.map {
+				position: absolute;
+				top: 0;
+				bottom: 0;
+				width: 100%;
+			}
+			.map-overlay {
+			  position: absolute;
+			  bottom: 20px;
+			  right: 10px;
+			  background: rgba(255, 255, 255, 0.8);
+			  font-family: Tahoma, sans-serif;
+			  overflow: auto;
+			  border-radius: 3px;
+			}
+			#lifeExpectancy {
+			  top: 50px;
+			  height: 70px;
+			  padding: 10px;
+			  width: auto;
+			}
+			#treeCanopy {
+			  top: 50px;
+				left: 10px;
+			  height: 70px;
+			  padding: 10px;
+			  width: 160px;
+			}
+			#legendTree {
+			  left: 10px;
+				padding: 10px;
+				padding-top: 0;
+			  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+			  line-height: 18px;
+			  height: auto;
+			  margin-bottom: 10px;
+			  width: 100px;
+			}
+			#legendLife {
+			  padding: 10px;
+				padding-top: 0;
+			  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+			  line-height: 18px;
+			  height: auto;
+			  margin-bottom: 10px;
+			  width: auto;
+			}
+			.legend-key {
+			  display: inline-block;
+			  border-radius: 20%;
+			  width: 10px;
+			  height: 10px;
+			  margin-right: 5px;
+			}
+
+		</style>
+		<!-- Swipe between maps -->
+		<script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-compare/v0.4.0/mapbox-gl-compare.js"></script>
+		<link
+			rel="stylesheet"
+			href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-compare/v0.4.0/mapbox-gl-compare.css"
+			type="text/css"
+		/>
+		<!-- Geocoder -->
+		<script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v4.5.1/mapbox-gl-geocoder.min.js"></script>
+		<link
+			rel="stylesheet"
+			href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v4.5.1/mapbox-gl-geocoder.css"
+			type="text/css"
+		/>
+		<!-- Promise polyfill script required to use Mapbox GL Geocoder in IE 11 -->
+		<script src="https://cdn.jsdelivr.net/npm/es6-promise@4/dist/es6-promise.min.js"></script>
+		<script src="https://cdn.jsdelivr.net/npm/es6-promise@4/dist/es6-promise.auto.min.js"></script>
+
+		<div id="comparison-container">
+			<div id="before" class="map"></div>
+			<div id="after" class="map"></div>
+		</div>
+
+		<div class='map-overlay' id='treeCanopy'><h2>Tree Canopy</h2></div>
+		<div class='map-overlay' id='lifeExpectancy'><h2>Life Expectancy</h2></div>
+		<div class='map-overlay' id='legendTree'><p>Tree Canopy<br>Density</p></div>
+		<div class='map-overlay' id='legendLife'><p>Life Expectancy<br>in Years</p></div>
+
+		<script>
+
+		mapboxgl.accessToken = 'pk.eyJ1Ijoic2FzY2h1IiwiYSI6ImNraG1nNTl2OTBvcWEycG85cWgxYTZqZ3QifQ.iy2kXgMwi6Bf9FJqc0N_og';
+		var bounds = [
+			[-122.9, 47.0],
+			[-122.0, 47.5]
+		];
+		var beforeMap = new mapboxgl.Map({
+			container: 'before',
+			style: 'mapbox://styles/saschu/ckhmkqljc03gs19pd709eguem',
+			center: [-122.45, 47.245],
+			zoom: 10.5,
+			maxBounds: bounds
+		});
+		var afterMap = new mapboxgl.Map({
+			container: 'after',
+			style: 'mapbox://styles/saschu/ckhmt01cc072q19nz2ss21806',
+			center: [-122.45, 47.245],
+			zoom: 10.5,
+			maxBounds: bounds
+		});
+
+		// A selector or reference to HTML element
+		var container = '#comparison-container';
+		var map = new mapboxgl.Compare(beforeMap, afterMap, container, {
+		// Set this to enable comparing two maps by mouse movement (but not for this map!):
+		// mousemove: true
+		});
+
+		// Clickable data layer that tells the user what neighborhood they are interested in
+		beforeMap.on('load', function(){
+			//add a source layer for neighborhoods
+			beforeMap.addSource('neighborhoodCouncilDistricts', {
+						"type": "geojson",
+						"data": "https://opendata.arcgis.com/datasets/6399cabf87274514b86658227d38af30_3.geojson"
+				});
+				//add the neighborhoods to the map
+				beforeMap.addLayer({
+					"id":"neighborhoods",
+					"type":"fill",
+					"source":"neighborhoodCouncilDistricts",
+					"paint": {
+						"fill-color": "#ffffff",
+						"fill-opacity": 0,
+						"fill-outline-color": "#000000"
+					}
+				});
+			});
+			afterMap.on('load', function(){
+				//add a source layer for neighborhoods
+				afterMap.addSource('neighborhoodCouncilDistricts', {
+							"type": "geojson",
+							"data": "https://opendata.arcgis.com/datasets/6399cabf87274514b86658227d38af30_3.geojson"
+					});
+					//add the neighborhoods to the map
+					afterMap.addLayer({
+						"id":"neighborhoods",
+						"type":"fill",
+						"source":"neighborhoodCouncilDistricts",
+						"paint": {
+							"fill-color": "#ffffff",
+							"fill-opacity": 0,
+							"fill-outline-color": "#000000"
+						}
+					});
+				});
+			// When a click event occurs on a feature in the neighborhoods layer, open a popup at the location of the click, with description HTML from its properties.
+			beforeMap.on('click', 'neighborhoods', function (e) {
+					new mapboxgl.Popup()
+							.setLngLat(e.lngLat)
+							.setHTML(e.features[0].properties.NAME)
+							.addTo(beforeMap);
+			});
+			afterMap.on('click', 'neighborhoods', function (e) {
+					new mapboxgl.Popup()
+							.setLngLat(e.lngLat)
+							.setHTML(e.features[0].properties.NAME)
+							.addTo(afterMap);
+			});
+			// Change the cursor to a pointer when the mouse is over the neighborhoods layer.
+			beforeMap.on('mouseenter', 'neighborhoods', function () {
+					beforeMap.getCanvas().style.cursor = 'pointer';
+			});
+			afterMap.on('mouseenter', 'neighborhoods', function () {
+					afterMap.getCanvas().style.cursor = 'pointer';
+			});
+			// Change it back to a pointer when it leaves.
+			beforeMap.on('mouseleave', 'neighborhoods', function () {
+					beforeMap.getCanvas().style.cursor = '';
+			});
+			afterMap.on('mouseleave', 'neighborhoods', function () {
+					afterMap.getCanvas().style.cursor = '';
+			});
+
+			//geocoder with a bounding box
+			afterMap.addControl(
+				new MapboxGeocoder({
+					accessToken: mapboxgl.accessToken,
+					bbox: [-122.58, 47.15, -122.34, 47.33],
+					mapboxgl: mapboxgl
+				})
+			);
+
+			// Add point layer of the Tacoma Logo to the maps
+			beforeMap.on('load', function () {
+				beforeMap.loadImage(
+					'TacomaLogoSM.png',
+					function (error, image) {
+						if (error) throw error;
+						beforeMap.addImage('Tacoma', image);
+						beforeMap.addSource('point', {
+								'type': 'geojson',
+								'data': {
+									'type': 'FeatureCollection',
+									'features': [
+										{
+											'type': 'Feature',
+											'geometry': {
+												'type': 'Point',
+												'coordinates': [-122.56, 47.2]
+											}
+										}
+									]
+								}
+							});
+							beforeMap.addLayer({
+								'id': 'points',
+								'type': 'symbol',
+								'source': 'point',
+								'layout': {
+									'icon-image': 'Tacoma',
+									'icon-size': 1
+								}
+							});
+					}
+				);
+			});
+			afterMap.on('load', function () {
+				afterMap.loadImage(
+					'TacomaLogoSM.png',
+					function (error, image) {
+						if (error) throw error;
+						afterMap.addImage('Tacoma', image);
+						afterMap.addSource('point', {
+								'type': 'geojson',
+								'data': {
+									'type': 'FeatureCollection',
+									'features': [
+										{
+											'type': 'Feature',
+											'geometry': {
+												'type': 'Point',
+												'coordinates': [-122.56, 47.2]
+											}
+										}
+									]
+								}
+							});
+							afterMap.addLayer({
+								'id': 'points',
+								'type': 'symbol',
+								'source': 'point',
+								'layout': {
+									'icon-image': 'Tacoma',
+									'icon-size': 1
+								}
+							});
+					}
+				);
+			});
+
+			// Legends
+			afterMap.on('load', function() {
+				var layers = ['83-88', '80-82', '78-79', '76-77', '67-75'];
+ 				var colors = ['#38a800', '#8cd100', '#ffff00', '#ff8000', '#ff0000'];
+				for (i = 0; i < layers.length; i++) {
+			  var layer = layers[i];
+			  var color = colors[i];
+			  var item = document.createElement('div');
+			  var key = document.createElement('span');
+			  key.className = 'legend-key';
+			  key.style.backgroundColor = color;
+				var value = document.createElement('span');
+			  value.innerHTML = layer;
+			  item.appendChild(key);
+			  item.appendChild(value);
+			  legendLife.appendChild(item);
+				}
+			});
+			afterMap.on('load', function() {
+				var layers = ['very dense', 'heavy', 'moderate', 'minimal', 'none'];
+				var colors = ['#38a800', '#8cd100', '#ffff00', '#ff8000', '#ff0000'];
+				for (i = 0; i < layers.length; i++) {
+				var layer = layers[i];
+				var color = colors[i];
+				var item = document.createElement('div');
+				var key = document.createElement('span');
+				key.className = 'legend-key';
+				key.style.backgroundColor = color;
+				var value = document.createElement('span');
+				value.innerHTML = layer;
+				item.appendChild(key);
+				item.appendChild(value);
+				legendTree.appendChild(item);
+				}
+			});
+
+
+		</script>
+
+	</body>
+	</html>
